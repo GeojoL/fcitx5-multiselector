@@ -127,6 +127,10 @@ kwriteconfig6 --notify --file kwinrc --group Wayland --key InputMethod /usr/shar
 
 插件在输入法之前拦截按键。展开时保存输入法原来的候选列表，界面上换成网格（每行是一个候选项，选中的词用高亮格式标出）。上屏时调用原列表里的候选，收起时用代理对象把原列表放回去。只要输入法提供完整的候选列表（BulkCandidateList），插件就能工作。
 
+## 相关项目
+
+- [fcitx5-cloudsecond](https://github.com/GeojoL/fcitx5-cloudsecond)：让前两个候选都来自百度云（fcitx5 自带云拼音只取第一个），百度能纠正打错的拼音。可以和本插件同时使用（已实测）。
+
 ## 许可证
 
 LGPL-2.1-or-later，与 fcitx5 一致。
