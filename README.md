@@ -23,7 +23,12 @@ fcitx5 自带的候选框只支持横排和竖排，没有多行网格，所以�
 
 ## 安装
 
-需要 fcitx5 ≥ 5.1.12，以及 cmake 和 g++。
+这是一个插件，**不是**打包好的输入法，必须按顺序装：
+
+**第 1 步：先装好 fcitx5 和中文输入法，并确认能正常打中文。**
+插件只是给已有的输入法加上「↓ 展开」功能，自己不带输入法。比如 Fedora 装 `fcitx5` 和 `fcitx5-chinese-addons`（拼音），Debian 装 `fcitx5` 和 `fcitx5-chinese-addons`。具体配置请参考各发行版的 fcitx5 文档。如果 fcitx5 已经在用，这一步跳过。
+
+**第 2 步：装编译工具**（插件需要从源码编译，目前没有现成的安装包）。需要 fcitx5 ≥ 5.1.12：
 
 ```bash
 # Fedora
@@ -32,17 +37,23 @@ sudo dnf install fcitx5-devel cmake gcc-c++
 sudo apt install libfcitx5core-dev cmake g++
 # Arch（待验证）
 sudo pacman -S fcitx5 cmake gcc
+```
 
+**第 3 步：编译并安装插件**
+
+```bash
 git clone https://github.com/GeojoL/fcitx5-multiselector.git
 cd fcitx5-multiselector
 ./install.sh
 ```
 
-装好后**注销并重新登录**（或者重启 fcitx5）即可生效。卸载：运行 `./uninstall.sh` 后重新登录。
+**第 4 步：注销后重新登录**（或者重启 fcitx5），插件就生效了。打几个拼音，按 ↓ 试试。
+
+卸载：运行 `./uninstall.sh`，然后重新登录。
 
 插件只往用户目录装两个文件：`~/.local/lib/fcitx5/multiselector.so` 和 `~/.local/share/fcitx5/addon/multiselector.conf`。不用 sudo 安装，也不改系统文件。
 
-Fedora Atomic、Bazzite 这类不可变系统：本机没有 cmake 时，`install.sh` 会自动在名为 `fcitx5-build` 的 toolbox 里编译（可以用 `TOOLBOX=名字` 指定别的容器）。
+Fedora Atomic、Bazzite 这类不可变系统：本机没有 cmake 时，`install.sh` 会自动在名为 `fcitx5-build` 的 toolbox 里编译（可以用 `TOOLBOX=名字` 指定别的容器）。这个 toolbox 的系统版本要和本机一致，里面要先装好第 2 步的编译工具。
 
 ## 按键
 
