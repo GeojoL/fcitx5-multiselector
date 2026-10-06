@@ -262,7 +262,7 @@ private:
                  i++) {
                 auto word = bulk->candidateFromAll(i).text().toString();
                 auto len = utf8::length(word);
-                std::string cell = std::to_string(i - rowStart + 1) + word;
+                std::string cell = std::to_string(i - rowStart + 1) + ". " + word;
                 for (int pad = static_cast<int>(len); pad < width; pad++) {
                     cell += kFullWidthSpace;
                 }
@@ -271,7 +271,7 @@ private:
                 } else {
                     row.append(cell);
                 }
-                row.append(" ");
+                row.append(kFullWidthSpace);
             }
             rows.push_back(std::move(row));
         }
