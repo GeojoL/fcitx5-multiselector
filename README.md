@@ -10,26 +10,33 @@
 
 在 Windows、macOS 上用过搜狗或微信输入法的人，换到 Linux 的 fcitx5 后常会遇到这个问题：
 
-- 候选框只有一行，每页 5～10 个词。要找的词（生僻字、同音字、人名用字）不在第一页时，只能按 `=` 一页一页往后翻，看不到全貌。
+- 候选框只有一行，fcitx5 拼音默认每页 7 个词（最多可调到 10 个）。要找的词（生僻字、同音字、人名用字）不在第一页时，只能按 `=` 一页一页往后翻，看不到全貌。
 - 搜狗、微信输入法按 ↓ 可以把候选展开成多行，一眼扫过二三十个词，再用方向键直接选。Linux 上没有这个功能。
 
 现有的办法都解决不了：
 
 - **fcitx5 自带的候选框**（经典界面）只有「横排」和「竖排」两种布局。改成竖排、调大每页数量，只是一列变长，并不是多行网格。
-- **搜狗输入法 Linux 版**基于旧的 fcitx4，在 Wayland 下基本用不了，现在主流桌面默认都是 Wayland。
+- **搜狗输入法 Linux 版**基于旧的 fcitx4。据社区反馈，它在 Wayland 下兼容性差（*待验证：作者没有实际安装测试过*）。
 - **Rime 等其他输入法引擎**的候选框同样由 fcitx5 绘制，所以也没有这个功能。
 
 ## 它解决了什么
 
 - **一屏看到更多候选**：按 ↓ 展开成 4×8 网格，方向键移动，空格、回车或数字键上屏，还能整页翻。
 - **不改变原来的输入习惯**：不按 ↓ 时一切照旧；展开后按其他键（比如继续打字）会自动收起。
-- **不影响输入法本身**：选词时调用的还是输入法自己的候选，用户词频、整句选词照常工作。插件不改任何配置和系统文件，卸载后即恢复原样。
+- **不影响输入法本身**：选词时调用的还是输入法自己的候选，用户词频照常学习（已验证）；长句里只选前半段词的「部分选词」按原理也不受影响（**待验证**）。插件不改任何配置和系统文件，卸载后即恢复原样。
 
 ## 适用范围
 
-- 需要 fcitx5 ≥ 5.1.20，使用默认的经典界面（classicui）。
-- 已测试：Bazzite（Fedora 44）+ KDE Plasma Wayland + fcitx5 5.1.22 + fcitx5 拼音。
-- 理论上也适用于其他提供完整候选列表的 fcitx5 输入法（比如 Rime），但还没测试过，欢迎反馈。
+| 项目 | 状态 |
+|---|---|
+| Bazzite（Fedora 44）+ KDE Plasma Wayland + fcitx5 5.1.22 + fcitx5 拼音 | ✅ 已实际使用 |
+| fcitx5 5.1.12（Debian 13）| ⚠️ 能编译通过，实际使用**待验证** |
+| fcitx5 5.1.7（Ubuntu 24.04）及更低版本 | ❌ 编译失败，不支持 |
+| GNOME、Sway 等其他桌面 / X11 | **待验证** |
+| Rime 等其他 fcitx5 输入法 | **待验证**（按原理应该可用） |
+| kimpanel 等非经典界面（classicui）的候选框 | **待验证**（网格靠文字高亮显示，效果可能不同） |
+
+欢迎在 Issue 里反馈你的测试结果。
 
 ## 按键
 
@@ -47,7 +54,7 @@
 
 - 插件在输入法引擎之前拦截按键（`PreInputMethod` 阶段）。
 - 展开时保存引擎原来的候选列表，界面上换成网格。网格每一行是一个候选项，选中的词用 HighLight 格式标出。
-- 上屏时调用的是原列表里的候选对象，引擎的行为（用户词频、整句选择等）不变。
+- 上屏时调用的是原列表里的候选对象，引擎的行为（用户词频等）不变。
 - 收起时用代理对象把原列表放回去，翻页和光标移动照常可用。
 - 只要输入法提供完整的候选列表（BulkCandidateList），插件就能工作。
 
@@ -55,11 +62,14 @@
 
 需要 fcitx5 的开发头文件、cmake 和 g++：
 
-| 发行版 | 依赖包 |
-|---|---|
-| Fedora | `sudo dnf install fcitx5-devel cmake gcc-c++` |
-| Arch | `sudo pacman -S fcitx5 cmake gcc`（头文件包含在 fcitx5 包里） |
-| Debian / Ubuntu | `sudo apt install libfcitx5core-dev cmake g++` |
+需要 fcitx5 ≥ 5.1.12。
+
+| 发行版 | 依赖包 | 状态 |
+|---|---|---|
+| Fedora 44 | `sudo dnf install fcitx5-devel cmake gcc-c++` | ✅ 已编译并使用 |
+| Debian 13 | `sudo apt install libfcitx5core-dev cmake g++` | ✅ 容器里编译通过 |
+| Ubuntu 24.04 | 同上 | ❌ fcitx5 版本太旧（5.1.7） |
+| Arch | `sudo pacman -S fcitx5 cmake gcc`（头文件包含在 fcitx5 包里） | **待验证**（只核对过包的文件列表） |
 
 Fedora Atomic、Bazzite 这类不可变系统上，可以在 toolbox 里编译（容器版本要和系统一致）：
 
@@ -84,7 +94,7 @@ toolbox run -c fcitx5-build sudo dnf install -y fcitx5-devel cmake gcc-c++
 
 ### KDE Wayland 下手动重启 fcitx5
 
-KDE Wayland 下 fcitx5 由 KWin 启动，`fcitx5 -r` 和 kill 都不能让它干净地重新启动。可以让 KWin 重新拉起它：
+KDE Wayland 下 fcitx5 由 KWin 启动。作者实测：通过 DBus 让 fcitx5 重启不生效，直接 kill 后 KWin 也不会自动拉起（`fcitx5 -r` 没有测试过）。下面的办法实测可以让 KWin 重新拉起它：
 
 ```bash
 pkill -x fcitx5
@@ -122,7 +132,8 @@ so picking a word that is not on the first page means paging blindly. Sogou and
 WeType let you see 30+ candidates at once; this addon does the same on fcitx5.
 
 It is a pure view over the input method's own candidate list, so engine
-behaviour (user history, partial selection) is unchanged and no system files
-or IME settings are modified. Requires fcitx5 ≥ 5.1.20. Build and install with
-`./install.sh`; remove with `./uninstall.sh`. Tested on KDE Plasma Wayland
-with fcitx5 Pinyin.
+behaviour (e.g. user history) is unchanged and no system files
+or IME settings are modified. Requires fcitx5 ≥ 5.1.12. Build and install with
+`./install.sh`; remove with `./uninstall.sh`. Used daily on KDE Plasma Wayland
+with fcitx5 Pinyin (Fedora 44, fcitx5 5.1.22); builds on Debian 13; other
+setups are untested.

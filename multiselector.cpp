@@ -56,7 +56,9 @@ public:
         setCursorModifiable(orig_->toCursorModifiable());
         setBulkCursor(orig_->toBulkCursor());
         setActionable(orig_->toActionable());
+#ifdef MULTISELECTOR_HAS_TABBED
         setTabbed(orig_->toTabbed());
+#endif
     }
 
     const Text &label(int idx) const override { return orig_->label(idx); }
