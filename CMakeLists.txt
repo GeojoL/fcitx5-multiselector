@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(fcitx5-gridcandidate CXX)
+project(fcitx5-gridcandidate VERSION 0.0.1 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
 find_package(Fcitx5Core REQUIRED)
 add_library(gridcandidate MODULE gridcandidate.cpp)

@@ -1,7 +1,7 @@
 [Addon]
 Name=Grid Candidate
 Category=Module
-Version=0.1
+Version=0.0.1
 Library=@LIBDIR@/gridcandidate
 Type=SharedLibrary
 OnDemand=False

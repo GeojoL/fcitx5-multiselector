@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: LGPL-2.1-or-later
 // Grid candidate expansion for fcitx5.
 //
 // While the regular one-line candidate list is shown, Down expands it into a
