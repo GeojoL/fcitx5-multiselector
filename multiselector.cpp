@@ -4,7 +4,7 @@
 // While the regular one-line candidate list is shown, Down expands it into a
 // kRows x kCols grid (like Sogou / WeType). Arrow keys move the cursor,
 // Space/Enter commits, 1..kCols commits a column in the current row,
-// PageUp/PageDown (or -/=) flip grid pages, Esc or Up on the first row
+// PageUp/PageDown (or -/= and [/]) flip grid pages, Esc or Up on the first row
 // collapses back. Any other key collapses and is passed to the input method.
 //
 // The grid is only a view: the input method's own candidate list is kept
@@ -221,12 +221,14 @@ private:
             }
             next = cursor_ - kCols;
         } else if (key.check(FcitxKey_Page_Down) ||
-                   key.check(FcitxKey_equal)) {
+                   key.check(FcitxKey_equal) ||
+                   key.check(FcitxKey_bracketright)) {
             next = (cursor_ / kPage + 1) * kPage;
             if (next >= n) {
                 next = cursor_;
             }
-        } else if (key.check(FcitxKey_Page_Up) || key.check(FcitxKey_minus)) {
+        } else if (key.check(FcitxKey_Page_Up) || key.check(FcitxKey_minus) ||
+                   key.check(FcitxKey_bracketleft)) {
             next = std::max(cursor_ - kPage, 0);
             next = next / kPage * kPage + row * kCols + col;
             next = std::min(next, n - 1);

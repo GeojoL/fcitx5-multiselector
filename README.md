@@ -76,7 +76,7 @@ toolbox run -c fcitx5-build sudo dnf install -y fcitx5-devel cmake gcc-c++
 | ↑ ↓ ← → | 移动 |
 | 空格 / 回车 | 上屏选中的词 |
 | 1–8 | 上屏当前行第 N 个 |
-| PgDn / `=`，PgUp / `-` | 翻页（顶部显示页码，如 `1/13`） |
+| PgDn / `=` / `]`，PgUp / `-` / `[` | 翻页（顶部显示页码，如 `1/13`） |
 | Esc，或在第一行按 ↑ | 收起 |
 | 其他键 | 自动收起，可以接着打字 |
 
@@ -137,7 +137,7 @@ LGPL-2.1-or-later，与 fcitx5 一致。
 brings Sogou / WeType-style candidate expansion to Linux. While the usual
 one-line candidate list is shown, press **Down** to expand it into a **4×8
 grid**, move with the arrow keys, commit with Space / Enter / 1–8, page with
-PgUp / PgDn, and collapse with Esc (or just keep typing).
+PgUp / PgDn (also - = [ ]), and collapse with Esc (or just keep typing).
 
 Why: fcitx5's classic UI only offers a horizontal or vertical candidate list,
 so picking a word that is not on the first page means paging blindly. Sogou and
