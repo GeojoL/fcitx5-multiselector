@@ -11,7 +11,7 @@
 ![展开后](docs/grid.png)
 
 > 这是 fcitx5 的一个**插件**，不是新的输入法。装上后你的拼音照常使用，只是多了「↓ 展开」这一个功能。
-> 截图来自 fcitx5 默认主题，是在虚拟显示里实际渲染出来的。
+> 截图是 fcitx5 默认主题在虚拟显示里实际渲染的画面（拼音关闭了符号/emoji 候选）。
 
 [安装](#安装) · [按键](#按键) · [常见问题](#常见问题) · [更新日志](CHANGELOG.md) · [English](#english)
 
@@ -23,20 +23,25 @@ fcitx5 自带的候选框只支持横排和竖排，没有多行网格，所以�
 
 ## 安装
 
-这是一个插件，**不是**打包好的输入法，必须按顺序装：
+这是一个插件，**不是**打包好的输入法，要按顺序装。下面的步骤都实际测试过（测试方法见[适用范围](#适用范围)）。
 
 **第 1 步：先装好 fcitx5 和中文输入法，并确认能正常打中文。**
-插件只是给已有的输入法加上「↓ 展开」功能，自己不带输入法。比如 Fedora 装 `fcitx5` 和 `fcitx5-chinese-addons`（拼音），Debian 装 `fcitx5` 和 `fcitx5-chinese-addons`。具体配置请参考各发行版的 fcitx5 文档。如果 fcitx5 已经在用，这一步跳过。
-
-**第 2 步：装编译工具**（插件需要从源码编译，目前没有现成的安装包）。需要 fcitx5 ≥ 5.1.12：
+插件只是给已有的输入法加上「↓ 展开」功能，本身不带输入法。如果 fcitx5 已经在用，跳过这一步。
 
 ```bash
-# Fedora
+# Fedora 44
+sudo dnf install fcitx5 fcitx5-chinese-addons
+# Debian 13
+sudo apt install fcitx5 fcitx5-chinese-addons
+```
+
+**第 2 步：装编译工具**（插件需要从源码编译，目前没有安装包）
+
+```bash
+# Fedora 44
 sudo dnf install fcitx5-devel cmake gcc-c++
 # Debian 13
 sudo apt install libfcitx5core-dev cmake g++
-# Arch（待验证）
-sudo pacman -S fcitx5 cmake gcc
 ```
 
 **第 3 步：编译并安装插件**
@@ -47,13 +52,21 @@ cd fcitx5-multiselector
 ./install.sh
 ```
 
-**第 4 步：注销后重新登录**（或者重启 fcitx5），插件就生效了。打几个拼音，按 ↓ 试试。
+**第 4 步：重新启动 fcitx5**，插件就生效了。打几个拼音，按 ↓ 试试。KDE Wayland 下的重启方法见[常见问题](#常见问题)。
 
-卸载：运行 `./uninstall.sh`，然后重新登录。
+卸载：运行 `./uninstall.sh`，再重新启动 fcitx5。
 
-插件只往用户目录装两个文件：`~/.local/lib/fcitx5/multiselector.so` 和 `~/.local/share/fcitx5/addon/multiselector.conf`。不用 sudo 安装，也不改系统文件。
+插件只往用户目录装两个文件：`~/.local/lib/fcitx5/multiselector.so` 和 `~/.local/share/fcitx5/addon/multiselector.conf`。安装时不需要 sudo，也不改系统文件。
 
-Fedora Atomic、Bazzite 这类不可变系统：本机没有 cmake 时，`install.sh` 会自动在名为 `fcitx5-build` 的 toolbox 里编译（可以用 `TOOLBOX=名字` 指定别的容器）。这个 toolbox 的系统版本要和本机一致，里面要先装好第 2 步的编译工具。
+### Bazzite / Fedora Atomic（不可变系统）
+
+本机不能直接装编译工具时，可以在 toolbox 里编译。`install.sh` 发现本机没有 cmake，会自动使用名为 `fcitx5-build` 的 toolbox：
+
+```bash
+toolbox create fcitx5-build
+toolbox run -c fcitx5-build sudo dnf install -y fcitx5-devel cmake gcc-c++
+./install.sh
+```
 
 ## 按键
 
@@ -69,14 +82,15 @@ Fedora Atomic、Bazzite 这类不可变系统：本机没有 cmake 时，`instal
 
 ## 适用范围
 
-| 项目 | 状态 |
-|---|---|
-| Bazzite（Fedora 44）+ KDE Plasma Wayland + fcitx5 5.1.22 + fcitx5 拼音 | ✅ 已实际使用 |
-| fcitx5 5.1.12（Debian 13）| ⚠️ 能编译通过，实际使用**待验证** |
-| fcitx5 5.1.7（Ubuntu 24.04）及更低版本 | ❌ 编译失败，不支持 |
-| GNOME、Sway 等其他桌面 / X11 | **待验证** |
-| Rime 等其他 fcitx5 输入法 | **待验证**（按原理应该可用） |
-| kimpanel 等非经典界面（classicui）的候选框 | **待验证**（网格靠文字高亮显示，效果可能不同） |
+| 环境 | 状态 | 怎么测的 |
+|---|---|---|
+| Bazzite（Fedora 44）+ KDE Plasma Wayland + fcitx5 5.1.22 拼音 | ✅ | 作者日常使用；安装用的是上面的 toolbox 方法 |
+| Fedora 44（fcitx5 5.1.23）| ✅ | 在干净的容器里按本文第 1–4 步安装，用虚拟 X11 显示逐步截图核对：展开、移动、翻页、收起、选词上屏、卸载 |
+| Debian 13（fcitx5 5.1.12）| ✅ | 同上 |
+| Ubuntu 24.04（fcitx5 5.1.7）及更低版本 | ❌ | 编译失败，不支持 |
+| 其他发行版、GNOME / Sway 等其他桌面 | 未测试 | |
+| Rime 等其他 fcitx5 输入法 | 未测试 | |
+| kimpanel 等非经典界面（classicui）的候选框 | 未测试 | |
 
 欢迎在 Issue 里反馈你的测试结果。
 
@@ -86,7 +100,7 @@ Fedora Atomic、Bazzite 这类不可变系统：本机没有 cmake 时，`instal
 先确认 fcitx5 已经重启过，再看日志里有没有 `Loaded addon multiselector`。比如 KDE 下 fcitx5 由 KWin 启动，可以运行 `journalctl --user -b | grep multiselector`。
 
 **能改成 4×7 或别的大小吗？**
-目前需要改 `multiselector.cpp` 开头的 `kRows` / `kCols`，然后重新运行 `./install.sh`。
+目前固定为 4×8，暂时不能调整。
 
 **和把候选框设成竖排有什么区别？**
 竖排只是把一行变成一列，每页的数量不变。网格一屏能看到 32 个候选，可以上下左右跳着选。
@@ -106,7 +120,7 @@ kwriteconfig6 --notify --file kwinrc --group Wayland --key InputMethod /usr/shar
 
 - 网格收起后，拼音的 Tab 笔画筛选暂时不生效，接着打字就恢复。
 - 英文和 emoji 候选可能对不齐。
-- 行数和列数还不能在设置界面里调整。
+- 网格大小固定为 4×8。
 - fcitx5 升级大版本后需要重新运行 `./install.sh`。
 
 ## 原理（给开发者）
@@ -133,5 +147,5 @@ It is a pure view over the input method's own candidate list, so engine
 behaviour (e.g. user history) is unchanged and no system files
 or IME settings are modified. Requires fcitx5 ≥ 5.1.12. Build and install with
 `./install.sh`; remove with `./uninstall.sh`. Used daily on KDE Plasma Wayland
-with fcitx5 Pinyin (Fedora 44, fcitx5 5.1.22); builds on Debian 13; other
-setups are untested.
+with fcitx5 Pinyin (Bazzite / Fedora 44); the install steps were tested end to
+end in clean Fedora 44 and Debian 13 containers. Other setups are untested.
