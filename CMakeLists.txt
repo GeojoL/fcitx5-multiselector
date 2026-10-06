@@ -1,0 +1,7 @@
+cmake_minimum_required(VERSION 3.16)
+project(fcitx5-gridcandidate CXX)
+set(CMAKE_CXX_STANDARD 20)
+find_package(Fcitx5Core REQUIRED)
+add_library(gridcandidate MODULE gridcandidate.cpp)
+target_link_libraries(gridcandidate Fcitx5::Core)
+set_target_properties(gridcandidate PROPERTIES PREFIX "")
