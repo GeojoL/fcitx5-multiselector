@@ -99,9 +99,9 @@ private:
     std::vector<std::unique_ptr<CandidateWord>> words_;
 };
 
-class GridCandidate : public AddonInstance {
+class MultiSelector : public AddonInstance {
 public:
-    explicit GridCandidate(Instance *instance) : instance_(instance) {
+    explicit MultiSelector(Instance *instance) : instance_(instance) {
         handlers_.emplace_back(
             instance_->watchEvent(EventType::InputContextKeyEvent,
                                   EventWatcherPhase::PreInputMethod,
@@ -326,13 +326,13 @@ private:
     int cursor_ = 0;
 };
 
-class GridCandidateFactory : public AddonFactory {
+class MultiSelectorFactory : public AddonFactory {
 public:
     AddonInstance *create(AddonManager *manager) override {
-        return new GridCandidate(manager->instance());
+        return new MultiSelector(manager->instance());
     }
 };
 
 } // namespace
 
-FCITX_ADDON_FACTORY_V2_BACKWARDS(gridcandidate, GridCandidateFactory)
+FCITX_ADDON_FACTORY_V2_BACKWARDS(multiselector, MultiSelectorFactory)

@@ -1,4 +1,4 @@
-# fcitx5-gridcandidate
+# fcitx5-multiselector
 
 [English summary below](#english)
 
@@ -62,8 +62,8 @@ toolbox run -c imegrid sudo dnf install -y fcitx5-devel gcc-c++ cmake
 ```
 
 `install.sh` 会安装两个文件：
-- `~/.local/lib/fcitx5/gridcandidate.so`
-- `~/.local/share/fcitx5/addon/gridcandidate.conf`（里面写的是 .so 的绝对路径，所以不需要设置 `FCITX_ADDON_DIRS`）
+- `~/.local/lib/fcitx5/multiselector.so`
+- `~/.local/share/fcitx5/addon/multiselector.conf`（里面写的是 .so 的绝对路径，所以不需要设置 `FCITX_ADDON_DIRS`）
 
 装好后重启 fcitx5 生效。
 
@@ -88,7 +88,7 @@ kwriteconfig6 --notify --file kwinrc --group Wayland --key InputMethod /usr/shar
 
 - 网格收起后，拼音的 Tab 笔画筛选不生效，接着打字就恢复正常。
 - 列宽按全角字符补齐，英文和 emoji 候选可能对不齐。
-- 行数和列数写死在 `gridcandidate.cpp` 的 `kRows` / `kCols`。
+- 行数和列数写死在 `multiselector.cpp` 的 `kRows` / `kCols`。
 - fcitx5 升级大版本后需要重新编译。
 
 ## 许可证
@@ -97,7 +97,7 @@ LGPL-2.1-or-later，与 fcitx5 一致。见 [LICENSE](LICENSE)。
 
 ## English
 
-**fcitx5-gridcandidate** is a small fcitx5 addon that adds Sogou/WeType-style
+**fcitx5-multiselector** is a small fcitx5 addon that adds Sogou/WeType-style
 candidate expansion: while the one-line candidate list is shown, press **Down**
 to expand it into a **4×8 grid**, navigate with the arrow keys, commit with
 Space/Enter or 1–8, page with PgUp/PgDn, and collapse with Esc. It works as a

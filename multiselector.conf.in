@@ -1,8 +1,8 @@
 [Addon]
-Name=Grid Candidate
+Name=Multi Selector
 Category=Module
 Version=0.0.1
-Library=@LIBDIR@/gridcandidate
+Library=@LIBDIR@/multiselector
 Type=SharedLibrary
 OnDemand=False
 Configurable=False
