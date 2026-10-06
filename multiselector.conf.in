@@ -1,7 +1,7 @@
 [Addon]
 Name=Multi Selector
 Category=Module
-Version=0.0.1
+Version=0.0.2
 Library=@LIBDIR@/multiselector
 Type=SharedLibrary
 OnDemand=False

@@ -38,9 +38,31 @@ using namespace fcitx;
 constexpr int kRows = 4;
 constexpr int kCols = 8;
 constexpr int kPage = kRows * kCols;
-// Cells are padded to this many CJK characters so columns line up.
-constexpr int kMaxCellWidth = 6;
+// Cells are padded to the widest word on the page, measured in half-width
+// units (CJK = 2, Latin = 1), so columns line up; capped at this many units.
+constexpr int kMaxCellWidth = 12;
 const char *const kFullWidthSpace = "　";
+// Roughly half of a CJK character, used for an odd half-width unit.
+const char *const kHalfWidthSpace = " ";
+
+bool isWide(uint32_t c) {
+    return (c >= 0x1100 && c <= 0x115F) || (c >= 0x2E80 && c <= 0xA4CF) ||
+           (c >= 0xAC00 && c <= 0xD7A3) || (c >= 0xF900 && c <= 0xFAFF) ||
+           (c >= 0xFE30 && c <= 0xFE4F) || (c >= 0xFF00 && c <= 0xFF60) ||
+           (c >= 0xFFE0 && c <= 0xFFE6) || (c >= 0x1F300 && c <= 0x1FAFF) ||
+           (c >= 0x20000 && c <= 0x3FFFD);
+}
+
+int displayWidth(const std::string &word) {
+    if (!utf8::validate(word)) {
+        return static_cast<int>(word.size());
+    }
+    int width = 0;
+    for (auto c : utf8::MakeUTF8CharRange(word)) {
+        width += isWide(c) ? 2 : 1;
+    }
+    return width;
+}
 
 // Re-exposes the engine's original list after the grid closes. It borrows
 // every interface pointer of the original, so paging, cursor movement and
@@ -250,10 +272,8 @@ private:
 
         int width = 1;
         for (int i = pageStart; i < pageEnd; i++) {
-            auto len = utf8::length(bulk->candidateFromAll(i).text().toString());
-            if (len != utf8::INVALID_LENGTH) {
-                width = std::max(width, static_cast<int>(len));
-            }
+            width = std::max(
+                width, displayWidth(bulk->candidateFromAll(i).text().toString()));
         }
         width = std::min(width, kMaxCellWidth);
 
@@ -263,10 +283,13 @@ private:
             for (int i = rowStart; i < std::min(rowStart + kCols, pageEnd);
                  i++) {
                 auto word = bulk->candidateFromAll(i).text().toString();
-                auto len = utf8::length(word);
                 std::string cell = std::to_string(i - rowStart + 1) + ". " + word;
-                for (int pad = static_cast<int>(len); pad < width; pad++) {
+                int pad = width - displayWidth(word);
+                for (; pad >= 2; pad -= 2) {
                     cell += kFullWidthSpace;
+                }
+                if (pad == 1) {
+                    cell += kHalfWidthSpace;
                 }
                 if (i == cursor_) {
                     row.append(cell, TextFormatFlag::HighLight);

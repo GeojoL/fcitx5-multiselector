@@ -1,17 +1,13 @@
 # fcitx5-multiselector
 
+[![License](https://img.shields.io/github/license/GeojoL/fcitx5-multiselector)](LICENSE) [![Release](https://img.shields.io/github/v/release/GeojoL/fcitx5-multiselector)](https://github.com/GeojoL/fcitx5-multiselector/releases)
+
 **fcitx5 候选词展开插件**：候选只有一行时，按 **↓** 把它展开成 **4 行 × 8 列**，用方向键挑选，用法和搜狗、微信输入法一样。
 
-平时的样子（一行）：
-
-![展开前](docs/before.png)
-
-按 ↓ 之后（4×8，方向键移动，灰色是当前选中）：
-
-![展开后](docs/grid.png)
+![演示：输入 shi，按 ↓ 展开，方向键移动、翻页](docs/demo.gif)
 
 > 这是 fcitx5 的一个**插件**，不是新的输入法。装上后你的拼音照常使用，只是多了「↓ 展开」这一个功能。
-> 截图是 fcitx5 默认主题在虚拟显示里实际渲染的画面（拼音关闭了符号/emoji 候选）。
+> 动图是 fcitx5 默认主题在虚拟显示里实际渲染的画面（拼音关闭了符号/emoji 候选）。
 
 [安装](#安装) · [按键](#按键) · [常见问题](#常见问题) · [更新日志](CHANGELOG.md) · [English](#english)
 
@@ -119,7 +115,7 @@ kwriteconfig6 --notify --file kwinrc --group Wayland --key InputMethod /usr/shar
 ## 已知限制
 
 - 网格收起后，拼音的 Tab 笔画筛选暂时不生效，接着打字就恢复。
-- 英文和 emoji 候选可能对不齐。
+- 列宽按字符宽度估算（汉字算 2，英文字母算 1）。英文候选较多时，列与列之间可能有几个像素的偏差。
 - 网格大小固定为 4×8。
 - fcitx5 升级大版本后需要重新运行 `./install.sh`。
 

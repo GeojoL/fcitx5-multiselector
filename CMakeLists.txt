@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(fcitx5-multiselector VERSION 0.0.1 LANGUAGES CXX)
+project(fcitx5-multiselector VERSION 0.0.2 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
 # 5.1.12 is the oldest version verified to build (Debian 13); 5.1.7 does not.
 find_package(Fcitx5Core 5.1.12 REQUIRED)
