@@ -2,7 +2,7 @@
 
 [![License](https://img.shields.io/github/license/GeojoL/fcitx5-multiselector)](LICENSE) [![Release](https://img.shields.io/github/v/release/GeojoL/fcitx5-multiselector)](https://github.com/GeojoL/fcitx5-multiselector/releases)
 
-**fcitx5 候选词展开插件**：候选只有一行时，按 **↓** 把它展开成 **4 行 × 8 列**，用方向键挑选，用法和搜狗、微信输入法一样。
+**fcitx5 候选词展开插件**：候选只有一行时，按 **← →** 就能选词；按 **↓** 把它展开成 **4 行 × 8 列**，用方向键挑选，用法和搜狗、微信输入法一样。
 
 ![演示：输入 shi，按 ↓ 展开，方向键移动、翻页](docs/demo.gif)
 
@@ -66,9 +66,18 @@ toolbox run -c fcitx5-build sudo dnf install -y fcitx5-devel cmake gcc-c++
 
 ## 按键
 
+一行候选时：
+
 | 按键 | 作用 |
 |---|---|
-| ↓（有候选时） | 展开 |
+| ← → | 选词（高亮跟着移动，到本页末尾自动翻页，到第一个或最后一个就停） |
+| 空格 | 上屏高亮的词 |
+| ↓ | 展开成网格，从高亮的词开始 |
+
+展开后：
+
+| 按键 | 作用 |
+|---|---|
 | ↑ ↓ ← → | 移动 |
 | 空格 / 回车 | 上屏选中的词 |
 | 1–8 | 上屏当前行第 N 个 |
@@ -87,6 +96,8 @@ toolbox run -c fcitx5-build sudo dnf install -y fcitx5-devel cmake gcc-c++
 | 其他发行版、GNOME / Sway 等其他桌面 | 未测试 | |
 | Rime 等其他 fcitx5 输入法 | 未测试 | |
 | kimpanel 等非经典界面（classicui）的候选框 | 未测试 | |
+
+v0.0.3 新增的一行 ← → 选词：在 Fedora 44（fcitx5 5.1.23）的隔离虚拟显示里逐项核对过（选词、跨页、两端停住、空格上屏、接着按 ↓ 展开）；Debian 13 只验证了能编译，其他环境未测试。
 
 欢迎在 Issue 里反馈你的测试结果。
 
@@ -117,6 +128,7 @@ kwriteconfig6 --notify --file kwinrc --group Wayland --key InputMethod /usr/shar
 - 网格收起后，拼音的 Tab 笔画筛选暂时不生效，接着打字就恢复。
 - 列宽按字符宽度估算（汉字算 2，英文字母算 1）。英文候选较多时，列与列之间可能有几个像素的偏差。
 - 网格大小固定为 4×8。
+- 有候选时 ← → 用来选词，不能再用它们在拼音里移动光标（比如把 `shi` 改成 `shai`）。要改拼音，可以用退格删掉重打。
 - fcitx5 升级大版本后需要重新运行 `./install.sh`。
 
 ## 原理（给开发者）
@@ -134,10 +146,13 @@ LGPL-2.1-or-later，与 fcitx5 一致。
 ## English
 
 **fcitx5-multiselector** is a fcitx5 addon (not a new input method) that
-brings Sogou / WeType-style candidate expansion to Linux. While the usual
-one-line candidate list is shown, press **Down** to expand it into a **4×8
-grid**, move with the arrow keys, commit with Space / Enter / 1–8, page with
-PgUp / PgDn (also - = [ ]), and collapse with Esc (or just keep typing).
+brings Sogou / WeType-style candidate selection to Linux. While the usual
+one-line candidate list is shown, **Left / Right** move the highlight (Space
+commits it; the cursor pages forward and stops at either end), and **Down**
+expands it into a **4×8 grid**: move with the arrow keys, commit with
+Space / Enter / 1–8, page with PgUp / PgDn (also - = [ ]), and collapse with
+Esc (or just keep typing). While candidates are shown, Left / Right no longer
+move the cursor inside the typed pinyin.
 
 Why: fcitx5's classic UI only offers a horizontal or vertical candidate list,
 so picking a word that is not on the first page means paging blindly. Sogou and

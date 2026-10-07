@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: LGPL-2.1-or-later
 // Grid candidate expansion for fcitx5.
 //
-// While the regular one-line candidate list is shown, Down expands it into a
+// While the regular one-line candidate list is shown, Left / Right move the
+// highlighted candidate (Space commits it) and Down expands the list into a
 // kRows x kCols grid (like Sogou / WeType). Arrow keys move the cursor,
 // Space/Enter commits, 1..kCols commits a column in the current row,
 // PageUp/PageDown (or -/= and [/]) flip grid pages, Esc or Up on the first row
@@ -166,7 +167,15 @@ private:
             if (grid_) {
                 clear();
             }
-            if (event.isRelease() || !event.key().check(FcitxKey_Down)) {
+            if (event.isRelease()) {
+                return;
+            }
+            if (event.key().check(FcitxKey_Left) ||
+                event.key().check(FcitxKey_Right)) {
+                moveInLine(event);
+                return;
+            }
+            if (!event.key().check(FcitxKey_Down)) {
                 return;
             }
             auto list = ic->inputPanel().candidateList();
@@ -320,6 +329,37 @@ private:
         ic->inputPanel().setAuxDown(Text());
         ic->inputPanel().setCandidateList(
             std::make_unique<ProxyCandidateList>(orig));
+        ic->updateUserInterface(UserInterfaceComponent::InputPanel);
+    }
+
+    // One-line list: Left / Right move the highlighted candidate (Space then
+    // commits it, as the engine does for its own cursor). Without a movable
+    // candidate list the key goes to the engine unchanged.
+    void moveInLine(KeyEvent &event) {
+        auto *ic = event.inputContext();
+        auto list = ic->inputPanel().candidateList();
+        if (!list || list->empty()) {
+            return;
+        }
+        auto *movable = list->toCursorMovable();
+        if (!movable) {
+            return;
+        }
+        const bool right = event.key().check(FcitxKey_Right);
+        event.filterAndAccept();
+        // Stop at either end instead of wrapping around the whole list.
+        if (auto *bulkCursor = list->toBulkCursor(); bulkCursor && list->toBulk()) {
+            const int cursor = bulkCursor->globalCursorIndex();
+            const int last = list->toBulk()->totalSize() - 1;
+            if ((right && last >= 0 && cursor >= last) || (!right && cursor == 0)) {
+                return;
+            }
+        }
+        if (right) {
+            movable->nextCandidate();
+        } else {
+            movable->prevCandidate();
+        }
         ic->updateUserInterface(UserInterfaceComponent::InputPanel);
     }
 
