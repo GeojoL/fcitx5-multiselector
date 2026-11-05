@@ -28,8 +28,9 @@
 #include <fcitx/text.h>
 #include <fcitx/userinterface.h>
 #include <algorithm>
-#include <exception>
+#include <limits>
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <unordered_set>
 #include <vector>
@@ -41,7 +42,6 @@ using namespace fcitx;
 constexpr int kRows = 4;
 constexpr int kCols = 8;
 constexpr int kPage = kRows * kCols;
-constexpr int kMaxCandidates = 256;
 // Cells are padded to the widest word on the page, measured in half-width
 // units (CJK = 2, Latin = 1), so columns line up; capped at this many units.
 constexpr int kMaxCellWidth = 12;
@@ -157,11 +157,15 @@ private:
                ic->inputPanel().candidateList().get() == grid_;
     }
 
-    void clear() {
+    void clear(bool resetKeyState = true) {
         ic_.unwatch();
         orig_.reset();
         grid_ = nullptr;
         total_ = 0;
+        if (resetKeyState) {
+            suppressedReleases_.clear();
+            expansionKey_ = FcitxKey_None;
+        }
     }
 
     int countCandidates(BulkCandidateList *bulk) const {
@@ -169,14 +173,44 @@ private:
         if (count >= 0) {
             return count;
         }
-        for (count = 0; count < kMaxCandidates; ++count) {
+        for (count = 0;; ++count) {
             try {
                 (void)bulk->candidateFromAll(count);
-            } catch (const std::exception &) {
+            } catch (const std::invalid_argument &) {
+                return count;
+            }
+            if (count == std::numeric_limits<int>::max()) {
                 return count;
             }
         }
-        return count;
+    }
+
+    int pageCapacity(const CandidateList *list, int candidateCount) const {
+        const auto *pageable = list->toPageable();
+        const int page = pageable ? pageable->currentPage() : 0;
+        if (!pageable || page <= 0 || pageable->hasNext()) {
+            return list->size();
+        }
+
+        const int precedingCount = candidateCount - list->size();
+        if (precedingCount > 0 && precedingCount % page == 0) {
+            return precedingCount / page;
+        }
+        return list->size();
+    }
+
+    int globalCursorIndex(const CandidateList *list,
+                          BulkCursorCandidateList *bulkCursor,
+                          int candidateCount) const {
+        const int cursor = bulkCursor ? bulkCursor->globalCursorIndex() : -1;
+        if (cursor >= 0) {
+            return cursor;
+        }
+
+        const auto *pageable = list->toPageable();
+        const int page = pageable ? std::max(pageable->currentPage(), 0) : 0;
+        return page * pageCapacity(list, candidateCount) +
+               std::max(list->cursorIndex(), 0);
     }
 
     int total() const { return total_; }
@@ -190,8 +224,7 @@ private:
         auto *ic = event.inputContext();
         if (event.isRelease()) {
             const auto sym = event.key().sym();
-            bool consumed = active(ic);
-            consumed = suppressedReleases_.erase(sym) > 0 || consumed;
+            const bool consumed = suppressedReleases_.erase(sym) > 0;
             if (sym == expansionKey_) {
                 expansionKey_ = FcitxKey_None;
             }
@@ -366,7 +399,7 @@ private:
 
     void restore(InputContext *ic) {
         auto orig = std::move(orig_);
-        clear();
+        clear(false);
         ic->inputPanel().setAuxDown(Text());
         ic->inputPanel().setCandidateList(
             std::make_unique<ProxyCandidateList>(orig));
@@ -384,23 +417,36 @@ private:
         }
         auto *movable = list->toCursorMovable();
         const bool right = event.key().check(FcitxKey_Right);
+        auto *bulk = list->toBulk();
+        auto *bulkCursor = list->toBulkCursor();
+        if (!movable && (!bulk || !bulkCursor)) {
+            return;
+        }
+        if (bulk) {
+            const int count = countCandidates(bulk);
+            const int cursor = globalCursorIndex(list.get(), bulkCursor, count);
+            if ((!right && cursor <= 0) || (right && cursor >= count - 1)) {
+                return;
+            }
+
+            consumeKey(event);
+            if (movable) {
+                if (right) {
+                    movable->nextCandidate();
+                } else {
+                    movable->prevCandidate();
+                }
+            } else if (bulkCursor) {
+                bulkCursor->setGlobalCursorIndex(cursor + (right ? 1 : -1));
+            } else {
+                return;
+            }
+            ic->updateUserInterface(UserInterfaceComponent::InputPanel);
+            return;
+        }
+
         if (movable) {
             consumeKey(event);
-            // Stop at either end instead of wrapping around the whole list.
-            if (auto *bulkCursor = list->toBulkCursor();
-                bulkCursor && list->toBulk()) {
-                const int cursor = bulkCursor->globalCursorIndex();
-                const auto *pageable = list->toPageable();
-                const int last = pageable && !pageable->hasNext()
-                                     ? (pageable->currentPage() + 1) *
-                                               list->size() -
-                                           1
-                                     : -1;
-                if ((right && last >= 0 && cursor >= last) ||
-                    (!right && cursor == 0)) {
-                    return;
-                }
-            }
             if (right) {
                 movable->nextCandidate();
             } else {
@@ -409,29 +455,6 @@ private:
             ic->updateUserInterface(UserInterfaceComponent::InputPanel);
             return;
         }
-
-        auto *bulkCursor = list->toBulkCursor();
-        auto *bulk = list->toBulk();
-        if (!bulkCursor || !bulk) {
-            return;
-        }
-        int cursor = bulkCursor->globalCursorIndex();
-        const auto *pageable = list->toPageable();
-        const int page = pageable ? pageable->currentPage() : 0;
-        if (cursor < 0) {
-            cursor = page * list->size() + std::max(list->cursorIndex(), 0);
-        }
-        const int next = cursor + (right ? 1 : -1);
-        // At either end, let the engine handle the key (for example, moving
-        // the caret in Rime's preedit string).
-        const int pageEnd = (page + 1) * list->size();
-        if (next < 0 ||
-            (right && pageable && !pageable->hasNext() && next >= pageEnd)) {
-            return;
-        }
-        consumeKey(event);
-        bulkCursor->setGlobalCursorIndex(next);
-        ic->updateUserInterface(UserInterfaceComponent::InputPanel);
     }
 
     void collapse(InputContext *ic) {
