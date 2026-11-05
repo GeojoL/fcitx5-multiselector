@@ -28,8 +28,11 @@
 #include <fcitx/text.h>
 #include <fcitx/userinterface.h>
 #include <algorithm>
+#include <limits>
 #include <memory>
+#include <stdexcept>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 namespace {
@@ -102,7 +105,8 @@ private:
 // marked with a HighLight text segment instead of a whole-row highlight.
 class GridCandidateList : public CandidateList {
 public:
-    explicit GridCandidateList(std::vector<Text> rows) {
+    GridCandidateList(std::vector<Text> rows, int cursorRow)
+        : cursorRow_(cursorRow) {
         for (auto &row : rows) {
             words_.push_back(
                 std::make_unique<DisplayOnlyCandidateWord>(std::move(row)));
@@ -114,7 +118,7 @@ public:
         return *words_.at(idx);
     }
     int size() const override { return static_cast<int>(words_.size()); }
-    int cursorIndex() const override { return -1; }
+    int cursorIndex() const override { return cursorRow_; }
     CandidateLayoutHint layoutHint() const override {
         return CandidateLayoutHint::Vertical;
     }
@@ -122,6 +126,7 @@ public:
 private:
     Text empty_;
     std::vector<std::unique_ptr<CandidateWord>> words_;
+    int cursorRow_;
 };
 
 class MultiSelector : public AddonInstance {
@@ -152,23 +157,91 @@ private:
                ic->inputPanel().candidateList().get() == grid_;
     }
 
-    void clear() {
+    void clear(bool resetKeyState = true) {
         ic_.unwatch();
         orig_.reset();
         grid_ = nullptr;
+        total_ = 0;
+        if (resetKeyState) {
+            suppressedReleases_.clear();
+            expansionKey_ = FcitxKey_None;
+        }
     }
 
-    int total() const { return orig_->toBulk()->totalSize(); }
+    int countCandidates(BulkCandidateList *bulk) const {
+        int count = bulk->totalSize();
+        if (count >= 0) {
+            return count;
+        }
+        for (count = 0;; ++count) {
+            try {
+                (void)bulk->candidateFromAll(count);
+            } catch (const std::invalid_argument &) {
+                return count;
+            }
+            if (count == std::numeric_limits<int>::max()) {
+                return count;
+            }
+        }
+    }
+
+    int pageCapacity(const CandidateList *list, int candidateCount) const {
+        const auto *pageable = list->toPageable();
+        const int page = pageable ? pageable->currentPage() : 0;
+        if (!pageable || page <= 0 || pageable->hasNext()) {
+            return list->size();
+        }
+
+        const int precedingCount = candidateCount - list->size();
+        if (precedingCount > 0 && precedingCount % page == 0) {
+            return precedingCount / page;
+        }
+        return list->size();
+    }
+
+    int globalCursorIndex(const CandidateList *list,
+                          BulkCursorCandidateList *bulkCursor,
+                          int candidateCount) const {
+        const int cursor = bulkCursor ? bulkCursor->globalCursorIndex() : -1;
+        if (cursor >= 0) {
+            return cursor;
+        }
+
+        const auto *pageable = list->toPageable();
+        const int page = pageable ? std::max(pageable->currentPage(), 0) : 0;
+        return page * pageCapacity(list, candidateCount) +
+               std::max(list->cursorIndex(), 0);
+    }
+
+    int total() const { return total_; }
+
+    void consumeKey(KeyEvent &event) {
+        suppressedReleases_.insert(event.key().sym());
+        event.filterAndAccept();
+    }
 
     void onKey(KeyEvent &event) {
         auto *ic = event.inputContext();
+        if (event.isRelease()) {
+            const auto sym = event.key().sym();
+            const bool consumed = suppressedReleases_.erase(sym) > 0;
+            if (sym == expansionKey_) {
+                expansionKey_ = FcitxKey_None;
+            }
+            if (consumed) {
+                event.filterAndAccept();
+            }
+            return;
+        }
+        if (event.key().sym() == expansionKey_ &&
+            suppressedReleases_.contains(expansionKey_)) {
+            consumeKey(event);
+            return;
+        }
         if (!active(ic)) {
             // The engine may have replaced the grid with a fresh list.
             if (grid_) {
                 clear();
-            }
-            if (event.isRelease()) {
-                return;
             }
             if (event.key().check(FcitxKey_Left) ||
                 event.key().check(FcitxKey_Right)) {
@@ -182,7 +255,7 @@ private:
             if (!list || list->empty() || !list->toBulk()) {
                 return;
             }
-            int totalSize = list->toBulk()->totalSize();
+            int totalSize = countCandidates(list->toBulk());
             if (totalSize <= 1) {
                 return;
             }
@@ -194,14 +267,12 @@ private:
                 start = pageable->currentPage() * list->size();
             }
             orig_ = std::move(list);
+            total_ = totalSize;
             ic_ = ic->watch();
             cursor_ = std::min(start, totalSize - 1);
-            event.filterAndAccept();
+            expansionKey_ = event.key().sym();
+            consumeKey(event);
             render(ic);
-            return;
-        }
-
-        if (event.isRelease()) {
             return;
         }
         const auto &key = event.key();
@@ -210,20 +281,20 @@ private:
         int col = cursor_ % kCols;
 
         if (key.check(FcitxKey_Escape)) {
-            event.filterAndAccept();
+            consumeKey(event);
             collapse(ic);
             return;
         }
         if (key.check(FcitxKey_Return) || key.check(FcitxKey_KP_Enter) ||
             key.check(FcitxKey_space)) {
-            event.filterAndAccept();
+            consumeKey(event);
             commit(ic, cursor_);
             return;
         }
         if (key.isDigit() && !key.hasModifier()) {
             int digit = key.digit();
             if (digit >= 1 && digit <= kCols) {
-                event.filterAndAccept();
+                consumeKey(event);
                 int idx = cursor_ - col + digit - 1;
                 if (idx < n) {
                     commit(ic, idx);
@@ -246,7 +317,7 @@ private:
             }
         } else if (key.check(FcitxKey_Up)) {
             if (cursor_ < kCols) {
-                event.filterAndAccept();
+                consumeKey(event);
                 collapse(ic);
                 return;
             }
@@ -268,14 +339,14 @@ private:
             collapse(ic);
             return;
         }
-        event.filterAndAccept();
+        consumeKey(event);
         cursor_ = std::clamp(next, 0, n - 1);
         render(ic);
     }
 
     void render(InputContext *ic) {
         auto *bulk = orig_->toBulk();
-        const int n = bulk->totalSize();
+        const int n = total();
         const int pageStart = cursor_ / kPage * kPage;
         const int pageEnd = std::min(pageStart + kPage, n);
 
@@ -292,7 +363,9 @@ private:
             for (int i = rowStart; i < std::min(rowStart + kCols, pageEnd);
                  i++) {
                 auto word = bulk->candidateFromAll(i).text().toString();
-                std::string cell = std::to_string(i - rowStart + 1) + ". " + word;
+                const bool selected = i == cursor_;
+                std::string cell = selected ? "> " : "  ";
+                cell += std::to_string(i - rowStart + 1) + ". " + word;
                 int pad = width - displayWidth(word);
                 for (; pad >= 2; pad -= 2) {
                     cell += kFullWidthSpace;
@@ -300,7 +373,7 @@ private:
                 if (pad == 1) {
                     cell += kHalfWidthSpace;
                 }
-                if (i == cursor_) {
+                if (selected) {
                     row.append(cell, TextFormatFlag::HighLight);
                 } else {
                     row.append(cell);
@@ -317,7 +390,8 @@ private:
                              std::to_string(pages))
                       : Text());
 
-        auto grid = std::make_unique<GridCandidateList>(std::move(rows));
+        auto grid = std::make_unique<GridCandidateList>(
+            std::move(rows), (cursor_ - pageStart) / kCols);
         grid_ = grid.get();
         ic->inputPanel().setCandidateList(std::move(grid));
         ic->updateUserInterface(UserInterfaceComponent::InputPanel);
@@ -325,7 +399,7 @@ private:
 
     void restore(InputContext *ic) {
         auto orig = std::move(orig_);
-        clear();
+        clear(false);
         ic->inputPanel().setAuxDown(Text());
         ic->inputPanel().setCandidateList(
             std::make_unique<ProxyCandidateList>(orig));
@@ -342,25 +416,45 @@ private:
             return;
         }
         auto *movable = list->toCursorMovable();
-        if (!movable) {
+        const bool right = event.key().check(FcitxKey_Right);
+        auto *bulk = list->toBulk();
+        auto *bulkCursor = list->toBulkCursor();
+        if (!movable && (!bulk || !bulkCursor)) {
             return;
         }
-        const bool right = event.key().check(FcitxKey_Right);
-        event.filterAndAccept();
-        // Stop at either end instead of wrapping around the whole list.
-        if (auto *bulkCursor = list->toBulkCursor(); bulkCursor && list->toBulk()) {
-            const int cursor = bulkCursor->globalCursorIndex();
-            const int last = list->toBulk()->totalSize() - 1;
-            if ((right && last >= 0 && cursor >= last) || (!right && cursor == 0)) {
+        if (bulk) {
+            const int count = countCandidates(bulk);
+            const int cursor = globalCursorIndex(list.get(), bulkCursor, count);
+            if ((!right && cursor <= 0) || (right && cursor >= count - 1)) {
                 return;
             }
+
+            consumeKey(event);
+            if (movable) {
+                if (right) {
+                    movable->nextCandidate();
+                } else {
+                    movable->prevCandidate();
+                }
+            } else if (bulkCursor) {
+                bulkCursor->setGlobalCursorIndex(cursor + (right ? 1 : -1));
+            } else {
+                return;
+            }
+            ic->updateUserInterface(UserInterfaceComponent::InputPanel);
+            return;
         }
-        if (right) {
-            movable->nextCandidate();
-        } else {
-            movable->prevCandidate();
+
+        if (movable) {
+            consumeKey(event);
+            if (right) {
+                movable->nextCandidate();
+            } else {
+                movable->prevCandidate();
+            }
+            ic->updateUserInterface(UserInterfaceComponent::InputPanel);
+            return;
         }
-        ic->updateUserInterface(UserInterfaceComponent::InputPanel);
     }
 
     void collapse(InputContext *ic) {
@@ -391,6 +485,9 @@ private:
     std::shared_ptr<CandidateList> orig_;
     const CandidateList *grid_ = nullptr;
     int cursor_ = 0;
+    int total_ = 0;
+    std::unordered_set<KeySym> suppressedReleases_;
+    KeySym expansionKey_ = FcitxKey_None;
 };
 
 class MultiSelectorFactory : public AddonFactory {
